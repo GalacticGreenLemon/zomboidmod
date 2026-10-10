@@ -1,0 +1,7 @@
+name=Viewpoint Model Fix
+id=ViewpointModelFix
+description=Proper 3D models for objects that look broken in Viewpoint's first-person view (urinals, toilets, sinks, metal shelves, boxes). Uses Viewpoint's model packs.
+modversion=0.1.0
+poster=poster.png
+require=\Viewpoint
+versionMin=42.21

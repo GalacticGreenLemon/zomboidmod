@@ -1,0 +1,21 @@
+# Viewpoint model pack: proper models for sprites that look broken in first person.
+# Paths are relative to this file. Lines starting with # are comments.
+
+id=ViewpointModelFix
+name=Model fixes (bathrooms, storage)
+
+model.urinal=urinal.obj
+model.toilet=toilet.obj
+model.sink=sink.obj
+model.shelf_metal=shelf_metal.obj
+model.box_small=box_small.obj
+
+# bind.<sprite name>=<model>,<degrees>,<x>,<y>,<z>,<scale>
+#   degrees: turns the model; each model faces south with its back to a north wall at 0
+#   x,y,z:   nudges it, in tiles (y is up)
+#   scale:   1 = as built (1 unit = 1 tile)
+#
+# Get the lines for your map: stand next to the objects in game, press F7, and copy what
+# lands in Zomboid/Lua/ViewpointModelFix_binds.txt below. The game must be restarted to
+# pick up changes to this file.
+
