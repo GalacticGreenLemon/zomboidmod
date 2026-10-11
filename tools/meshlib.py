@@ -28,11 +28,15 @@ class Tri:
 class Mesh:
     """Triangles, each with a material name, the material's parameters and corner normals.
 
-    wall: the model hangs on (or stands against) the north wall, which then shades it."""
+    wall: the model hangs on (or stands against) the north wall, which then shades it.
+    occluders: triangles that shade the model when it is baked but are not part of it
+    (the shelf under a shelf's goods)."""
 
-    def __init__(self, wall=False):
+    def __init__(self, wall=False, occluders=None, ao_radius=None):
         self.tris = []
         self.wall = wall
+        self.occluders = occluders or []
+        self.ao_radius = ao_radius
         self._groups = 0
 
     def group(self):
@@ -42,7 +46,7 @@ class Mesh:
 
     def tri(self, a, b, c, mat, prm=None, normals=None, group=None):
         """One triangle, corners counter-clockwise seen from outside."""
-        t = Tri(np.array([a, b, c], float), None, mat, prm or {}, group)
+        t = Tri(np.array([a, b, c], float), None, mat, prm if prm is not None else {}, group)
         t.n = np.array(normals, float) if normals is not None else np.tile(t.face_normal, (3, 1))
         self.tris.append(t)
 
@@ -60,6 +64,24 @@ class Mesh:
         self.quad((x0, y1, z1), (x1, y1, z1), (x1, y1, z0), (x0, y1, z0), top,
                   top_prm if top_prm is not None else prm)                             # +Y
         self.quad((x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1), mat, prm)    # -Y
+
+    def obox(self, cx, cz, y0, sx, sy, sz, yaw, mat, prm=None, top=None, top_prm=None):
+        """A box standing on y0, centred on (cx, cz), sx by sz across, sy tall, turned by yaw
+        degrees about the vertical (for things set down not quite square)."""
+        a = math.radians(yaw)
+        ca, sa = math.cos(a), math.sin(a)
+
+        def at(lx, y, lz):
+            return (cx + lx * ca - lz * sa, y, cz + lx * sa + lz * ca)
+        x0, x1, z0, z1, y1 = -sx / 2, sx / 2, -sz / 2, sz / 2, y0 + sy
+        top = top or mat
+        tp = top_prm if top_prm is not None else prm
+        self.quad(at(x0, y0, z1), at(x1, y0, z1), at(x1, y1, z1), at(x0, y1, z1), mat, prm)  # front
+        self.quad(at(x1, y0, z0), at(x0, y0, z0), at(x0, y1, z0), at(x1, y1, z0), mat, prm)  # back
+        self.quad(at(x1, y0, z1), at(x1, y0, z0), at(x1, y1, z0), at(x1, y1, z1), mat, prm)
+        self.quad(at(x0, y0, z0), at(x0, y0, z1), at(x0, y1, z1), at(x0, y1, z0), mat, prm)
+        self.quad(at(x0, y1, z1), at(x1, y1, z1), at(x1, y1, z0), at(x0, y1, z0), top, tp)   # top
+        self.quad(at(x0, y0, z0), at(x1, y0, z0), at(x1, y0, z1), at(x0, y0, z1), mat, prm)  # bottom
 
     def lathe(self, cx, cz, rings, mat, segments=12, a0=0.0, a1=360.0, top=None, bottom=None,
               close_back=False, prm=None, top_prm=None, bottom_prm=None):

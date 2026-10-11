@@ -221,6 +221,7 @@ def _hemisphere(count):
 
 def ambient_occlusion(mesh, P, N, seed=1):
     """How open each point is on the side N faces: 1 open, 0 enclosed."""
+    radius = mesh.ao_radius or AO_RADIUS
     m = len(P)
     if m == 0:
         return np.zeros(0)
@@ -248,11 +249,11 @@ def ambient_occlusion(mesh, P, N, seed=1):
             t = np.where(d[:, 2] < -1e-6, (-0.5 - o[:, 2]) / d[:, 2], np.inf)
             best = np.minimum(best, np.where(t > 1e-4, t, np.inf))
 
-    table = _cells(origins, AO_RADIUS)
-    for tri in mesh.tris:
+    table = _cells(origins, radius)
+    for tri in mesh.tris + mesh.occluders:
         v0, v1, v2 = tri.p
-        idx = _near(table, np.minimum(np.minimum(v0, v1), v2) - AO_RADIUS,
-                    np.maximum(np.maximum(v0, v1), v2) + AO_RADIUS, AO_RADIUS)
+        idx = _near(table, np.minimum(np.minimum(v0, v1), v2) - radius,
+                    np.maximum(np.maximum(v0, v1), v2) + radius, radius)
         if len(idx) == 0:
             continue
         rays = (idx[:, None] * AO_RAYS + np.arange(AO_RAYS)[None]).ravel()
@@ -270,7 +271,7 @@ def ambient_occlusion(mesh, P, N, seed=1):
         hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 1e-4)
         best[rays] = np.where(hit, np.minimum(best[rays], t), best[rays])
 
-    shade = np.where(best < AO_RADIUS, 1 - best / AO_RADIUS, 0.0)
+    shade = np.where(best < radius, 1 - best / radius, 0.0)
     return 1 - shade.reshape(m, AO_RAYS).mean(1)
 
 

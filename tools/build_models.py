@@ -11,6 +11,7 @@ The shapes here are authored Y-up (see meshlib.py); materials.py paints them.
 """
 
 import os
+import random
 import sys
 import time
 
@@ -115,6 +116,147 @@ def shelf_metal():
     return m
 
 
+# --- goods for the shelf: drawn over the empty shelf while the game shows it stocked ---------
+
+SHELF_LEVELS = (0.13, 0.61, 1.09, 1.57)  # tops of the shelf boards
+SHELF_FRONT, SHELF_BACK = WALL + 0.475, WALL + 0.03
+SHELF_X = 0.435                          # inside the posts
+
+STORE_COLOURS = [(168, 52, 44), (186, 146, 52), (58, 92, 140), (66, 112, 70), (200, 186, 140),
+                 (120, 66, 104), (210, 200, 182), (162, 96, 38), (48, 56, 64), (150, 160, 168)]
+GLASS_COLOURS = [(64, 88, 52), (94, 62, 32), (146, 156, 148)]
+PAINT_COLOURS = [(196, 190, 176), (150, 56, 44), (60, 96, 140), (196, 166, 64), (80, 110, 76)]
+
+
+def goods(kind, seed):
+    def make():
+        rng = random.Random(seed)
+        m = Mesh(wall=True, occluders=shelf_metal().tris, ao_radius=0.12)
+        fill = goods_store if kind == "store" else goods_storage
+        for level, y in enumerate(SHELF_LEVELS):
+            fill(m, rng, y, 0.40 if level < 3 else 0.28)
+        return m
+    return make
+
+
+def _prm(rng, y0, y1, **more):
+    return dict(colour=rng.choice(STORE_COLOURS), accent=rng.choice(STORE_COLOURS),
+                y0=y0, y1=y1, seed=rng.randrange(1000), **more)
+
+
+def goods_store(m, rng, y, room):
+    """A shop shelf: facings of boxed products, cans, bottles and jars, and the odd gap."""
+    x = -SHELF_X
+    while True:
+        kind = rng.choices(("box", "cans", "bottles", "jars", "gap"), (4, 3, 2, 1.5, 1.2))[0]
+        if kind == "gap":
+            x += rng.uniform(0.05, 0.14)
+        elif kind == "box":
+            w, d = rng.uniform(0.06, 0.12), rng.uniform(0.045, 0.08)
+            h = rng.uniform(0.14, min(0.30, room - 0.03))
+            prm = _prm(rng, y, y + h)
+            depth = rng.uniform(0.5, 1.0) * (SHELF_FRONT - SHELF_BACK - 0.02)
+            for _ in range(rng.randint(1, 3)):
+                if x + w > SHELF_X:
+                    break
+                m.obox(x + w / 2, SHELF_FRONT - d / 2 - 0.01, y, w, h, d, rng.uniform(-4, 4),
+                       "product", prm=prm)
+                _behind(m, x + w / 2, w * 0.96, y, h, d + 0.02, depth, "product", prm)
+                x += w + rng.uniform(0.003, 0.012)
+        elif kind == "cans":
+            r, h = rng.uniform(0.028, 0.04), rng.uniform(0.07, 0.12)
+            high = 2 if 2 * h < room - 0.02 and rng.random() < 0.6 else 1
+            prm = _prm(rng, 0, 1)
+            for _ in range(rng.randint(2, 4)):
+                if x + 2 * r > SHELF_X:
+                    break
+                cz = SHELF_FRONT - r - 0.012
+                for k in range(high):
+                    y0 = y + k * h
+                    lid = {}
+                    m.lathe(x + r, cz, [(y0, r, r), (y0 + h, r, r)], "can", segments=8,
+                            top="tin_lid", top_prm=lid, prm=dict(prm, y0=y0, y1=y0 + h))
+                _behind(m, x + r, 2 * r * 0.9, y, h * high, 2 * r + 0.02,
+                        rng.uniform(0.3, 1.0) * (SHELF_FRONT - SHELF_BACK - 0.02), "can",
+                        dict(prm, y0=y, y1=y + h))
+                x += 2 * r + rng.uniform(0.002, 0.01)
+        else:
+            jar = kind == "jars"
+            r = rng.uniform(0.035, 0.045) if jar else rng.uniform(0.028, 0.038)
+            h = rng.uniform(0.08, 0.12) if jar else rng.uniform(0.17, min(0.27, room - 0.02))
+            prm = _prm(rng, 0, 1, glass=rng.choice(GLASS_COLOURS))
+            cap = {"colour": rng.choice(STORE_COLOURS)}
+            for _ in range(rng.randint(2, 4)):
+                if x + 2 * r > SHELF_X:
+                    break
+                p = dict(prm, y0=y, y1=y + h)
+                _bottle_or_jar(m, jar, x + r, SHELF_FRONT - r - 0.012, y, r, h, p, cap)
+                _behind(m, x + r, 2 * r * 0.9, y, h * (0.84 if jar else 0.62), 2 * r + 0.02,
+                        rng.uniform(0.3, 1.0) * (SHELF_FRONT - SHELF_BACK - 0.02), "bottle", p)
+                x += 2 * r + rng.uniform(0.004, 0.012)
+        if x > SHELF_X - 0.05:
+            return
+
+
+def _behind(m, cx, w, y, h, skip, depth, mat, prm):
+    """The rows behind the front one, as one block: they are only ever seen past it."""
+    depth = min(depth, SHELF_FRONT - SHELF_BACK - 0.01) - skip
+    if depth > 0.02:
+        m.obox(cx, SHELF_FRONT - 0.01 - skip - depth / 2, y, w, h, depth, 0, mat, prm=prm)
+
+
+def _bottle_or_jar(m, jar, cx, cz, y, r, h, prm, cap):
+    if jar:
+        m.lathe(cx, cz, [(y, r, r), (y + h * 0.84, r, r), (y + h * 0.88, r * 0.86, r * 0.86)],
+                "bottle", segments=8, prm=prm)
+        m.lathe(cx, cz, [(y + h * 0.88, r * 0.92, r * 0.92), (y + h, r * 0.92, r * 0.92)],
+                "lid", segments=8, top="lid", prm=cap, top_prm=cap)
+    else:
+        m.lathe(cx, cz, [(y, r, r), (y + h * 0.62, r, r), (y + h * 0.78, r * 0.45, r * 0.45),
+                         (y + h * 0.9, r * 0.32, r * 0.32)], "bottle", segments=6, prm=prm)
+        m.lathe(cx, cz, [(y + h * 0.9, r * 0.36, r * 0.36), (y + h, r * 0.36, r * 0.36)],
+                "lid", segments=6, top="lid", prm=cap, top_prm=cap)
+
+
+def goods_storage(m, rng, y, room):
+    """A storeroom shelf: taped cardboard boxes, some stacked, and paint tins."""
+    x = -SHELF_X
+    while x < SHELF_X - 0.1:
+        kind = rng.choices(("box", "tins", "gap"), (5, 1.5, 1))[0]
+        if kind == "gap":
+            x += rng.uniform(0.06, 0.18)
+            continue
+        if kind == "tins":
+            r, h = 0.055, rng.uniform(0.12, 0.15)
+            prm = dict(_prm(rng, 0, 1), colour=rng.choice(PAINT_COLOURS))
+            for _ in range(rng.randint(1, 3)):
+                if x + 2 * r > SHELF_X:
+                    break
+                lid = {}
+                m.lathe(x + r, SHELF_FRONT - r - rng.uniform(0.01, 0.06), [(y, r, r), (y + h, r, r)],
+                        "paint_tin", segments=10, top="tin_lid", top_prm=lid,
+                        prm=dict(prm, y0=y, y1=y + h, seed=rng.randrange(1000)))
+                x += 2 * r + rng.uniform(0.004, 0.02)
+            continue
+        w = min(rng.uniform(0.14, 0.40), SHELF_X - x)
+        if w < 0.1:
+            return
+        d = rng.uniform(0.24, SHELF_FRONT - SHELF_BACK - 0.01)
+        y0 = y
+        for _ in range(2):
+            h = rng.uniform(0.1, 0.34)
+            if y0 + h > y + room:
+                break
+            cz = SHELF_FRONT - d / 2 - rng.uniform(0.005, 0.04)
+            yaw = rng.uniform(-6, 6)
+            m.obox(x + w / 2, cz, y0, w * 0.97, h, d, yaw, "cardboard")
+            m.obox(x + w / 2, cz, y0 + h, 0.05, 0.004, d * 0.98, yaw, "tape")
+            y0 += h
+            if rng.random() < 0.5:
+                break
+        x += w + rng.uniform(0.005, 0.03)
+
+
 def bed(blanket):
     def make():
         # one tile of a bed: beds are two sprites long, so each half is a full tile of bed
@@ -169,6 +311,12 @@ MODELS = {
     "mirror": mirror,
     "light_switch": light_switch,
     "hand_dryer": hand_dryer,
+    "goods_store_1": goods("store", 1),
+    "goods_store_2": goods("store", 2),
+    "goods_store_3": goods("store", 3),
+    "goods_storage_1": goods("storage", 11),
+    "goods_storage_2": goods("storage", 12),
+    "goods_storage_3": goods("storage", 13),
 }
 
 

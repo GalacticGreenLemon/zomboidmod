@@ -241,6 +241,103 @@ def glass(tx):
     return finish(c, tx)
 
 
+# --- goods on shelves -----------------------------------------------------------------------
+
+PAPER = C(206, 198, 176)
+TIN = C(150, 150, 142)
+INK = C(58, 52, 46)
+
+
+def faded(colour):
+    """Shop colours, sun-faded and grubby."""
+    c = C(*colour)
+    return c * 0.78 + c.mean() * 0.12 + C(14, 12, 6)
+
+
+def height_in(tx):
+    """0 at the bottom of the item, 1 at its top."""
+    return (tx.y - tx.prm["y0"]) / (tx.prm["y1"] - tx.prm["y0"])
+
+
+def printed(tx, c, h, lo, hi, seed):
+    """A paper label from height lo to hi: a logo blob, lines of print, a coloured stripe."""
+    P = tx.P
+    band = smooth(lo, lo + 0.03, h) * smooth(hi, hi - 0.03, h)
+    c = mix(c, PAPER, band * 0.85)
+    logo = smooth(0.55, 0.68, vnoise(P * 22 + seed * 7.1, seed))
+    c = mix(c, faded(tx.prm["accent"]), band * logo * 0.9)
+    rows = (np.abs(((h - lo) / max(hi - lo, 1e-6) * 9) % 1 - 0.5) < 0.16)
+    words = vnoise(stretch(P, 150, 1, 150), seed + 1) > 0.42
+    lower = h < lo + (hi - lo) * 0.45
+    c = mix(c, INK, band * rows * words * lower * 0.55)
+    stripe = smooth(hi - 0.1, hi - 0.08, h) * smooth(hi - 0.02, hi - 0.04, h)
+    c = mix(c, faded(tx.prm["colour"]) * 0.8, stripe * 0.8)
+    return c
+
+
+def shelf_wear(tx, c):
+    c = mix(c, DUST, facing_up(tx) ** 2 * 0.55)
+    c = mix(c, C(190, 182, 164), tx.edge * 0.35)
+    c = mix(c, GRIME, (1 - tx.ao) ** 1.2 * 0.75)
+    return finish(c, tx)
+
+
+def product(tx):
+    """A printed box. prm colour, accent, y0, y1, seed."""
+    seed = tx.prm["seed"]
+    c = faded(tx.prm["colour"]) + ((fbm(tx.P * 40, 2, seed) - 0.5) * 14)[:, None]
+    c = printed(tx, c, height_in(tx), 0.32, 0.8, seed)
+    return shelf_wear(tx, c)
+
+
+def can(tx):
+    """A tin can, its label all the way round, tin showing at the rims."""
+    seed = tx.prm["seed"]
+    h = height_in(tx)
+    c = faded(tx.prm["colour"]) + ((fbm(tx.P * 50, 2, seed) - 0.5) * 12)[:, None]
+    c = printed(tx, c, h, 0.25, 0.75, seed)
+    rim = np.maximum(smooth(0.1, 0.06, h), smooth(0.9, 0.94, h))
+    c = mix(c, TIN, rim)
+    c = mix(c, RUST, smooth(0.86, 0.95, vnoise(tx.P * 120, seed + 2)) * 0.6)
+    return shelf_wear(tx, c)
+
+
+def tin_lid(tx):
+    c = TIN + ((vnoise(tx.P * 160, 201) - 0.5) * 20)[:, None]
+    c = mix(c, RUST, smooth(0.8, 0.92, fbm(tx.P * 60, 2, 202)) * 0.6)
+    return shelf_wear(tx, c)
+
+
+def bottle(tx):
+    """Glass seen through: dark and tinted, a paper label low on it, a sheen down one side."""
+    seed = tx.prm["seed"]
+    h = height_in(tx)
+    glass_c = faded(tx.prm["glass"])
+    c = glass_c + ((vnoise(tx.P * 60, seed) - 0.5) * 10)[:, None]
+    sheen = smooth(0.55, 0.85, tx.N[:, 0] * 0.7 + tx.N[:, 2] * 0.7)
+    c = mix(c, C(196, 204, 198), sheen * 0.35)
+    c = printed(tx, c, h, 0.18, 0.55, seed)
+    return shelf_wear(tx, c)
+
+
+def lid(tx):
+    c = faded(tx.prm["colour"]) + ((vnoise(tx.P * 120, 211) - 0.5) * 16)[:, None]
+    return shelf_wear(tx, c)
+
+
+def paint_tin(tx):
+    """A paint tin: the label, and paint run down from the lid."""
+    seed = tx.prm["seed"]
+    h = height_in(tx)
+    c = TIN + ((fbm(tx.P * 50, 2, seed) - 0.5) * 16)[:, None]
+    c = printed(tx, c, h, 0.15, 0.7, seed)
+    run = fbm(stretch(tx.P, 70, 3, 70), 2, seed + 3)
+    drip = smooth(0.55, 0.62, run + (h - 0.75) * 1.2)
+    c = mix(c, faded(tx.prm["colour"]), drip * 0.9)
+    c = mix(c, RUST, smooth(0.8, 0.9, vnoise(tx.P * 90, seed + 4)) * 0.5)
+    return shelf_wear(tx, c)
+
+
 PAINTERS = {
     "porcelain": porcelain,
     "seat": seat,
@@ -259,4 +356,10 @@ PAINTERS = {
     "tape": tape,
     "plastic": plastic,
     "glass": glass,
+    "product": product,
+    "can": can,
+    "tin_lid": tin_lid,
+    "bottle": bottle,
+    "lid": lid,
+    "paint_tin": paint_tin,
 }
