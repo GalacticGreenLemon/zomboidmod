@@ -27,7 +27,7 @@ ViewpointModelFix.DEGREES = { S = 0, W = 90, N = 180, E = 270 }
 -- sprite's art has the shelf's goods painted on, so swapping it is a matter of taste).
 ViewpointModelFix.MATCHES = {
     { find = "urinal", model = "urinal", auto = true },
-    { find = "hanging", model = "urinal", auto = true },   -- the game's urinals: "Toilet / Hanging"
+    { find = "toilet hanging", model = "urinal", auto = true },   -- the game's urinals; "Sink / Hanging" is a sink
     { find = "toilet", model = "toilet", auto = true },
     { find = "sink", model = "sink", auto = true, wallOnly = true },
     { find = "metal shel", model = "shelf_metal", auto = false },
