@@ -185,6 +185,27 @@ def mattress(tx):
     return finish(c, tx)
 
 
+def sheet(tx):
+    """Cotton gone grey: soft creases, yellowed patches."""
+    P = tx.P
+    c = C(196, 192, 178) + ((vnoise(P * 220, 221) - 0.5) * 10)[:, None]
+    c = c * (0.86 + 0.2 * fbm(stretch(P, 9, 6, 4), 3, 222))[:, None]
+    c = mix(c, STAIN, smooth(0.62, 0.8, fbm(P * 6, 3, 223)) * 0.5)
+    c = mix(c, GRIME, (1 - tx.ao) ** 1.2 * 0.6)
+    return finish(c, tx)
+
+
+def pillow(tx):
+    """A slept-on pillow: dented in the middle, a sweat stain where the head went."""
+    P = tx.P
+    c = C(200, 196, 182) + ((vnoise(P * 200, 231) - 0.5) * 10)[:, None]
+    c = c * (0.84 + 0.22 * fbm(P * 10, 3, 232))[:, None]
+    head = np.hypot((tx.x - 0.02) / 0.16, (tx.z + 0.33) / 0.07)
+    c = mix(c, STAIN, smooth(1.0, 0.3, head) * facing_up(tx) * 0.45)
+    c = mix(c, GRIME, (1 - tx.ao) ** 1.2 * 0.6)
+    return finish(c, tx)
+
+
 def darkmetal(tx):
     P = tx.P
     c = C(66, 70, 66) + ((fbm(P * 12, 3, 111) - 0.5) * 18)[:, None]
@@ -347,6 +368,8 @@ PAINTERS = {
     "drain": drain,
     "wood": wood,
     "mattress": mattress,
+    "sheet": sheet,
+    "pillow": pillow,
     "blanket": blanket((170, 154, 124), 161),
     "blanket_blue": blanket((80, 100, 136), 171),
     "blanket_red": blanket((140, 60, 56), 181),

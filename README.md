@@ -20,8 +20,15 @@ It doesn't change Viewpoint itself.
 ## How the models get used
 
 You don't need to set anything up. As the map loads, the mod checks each object's name.
-Urinals, toilets, wall sinks, beds, mirrors, light switches and hand dryers get their model straight away.
+Urinals, toilets, wall sinks, beds, mirrors, light switches, hand dryers and metal shelving get their model straight away.
 Beds come in colours to match the blanket: plain, blue, red or pink, and green.
+The head end of a bed has a headboard, a pillow and the blanket turned down; the foot end has a footboard.
+If the pillows come out at the foot of every bed, set `ViewpointModelFix.PILLOW_AT_BACK` to `false` in the Lua file.
+
+A stocked shelf shows its goods through an overlay sprite, which the game takes away when the shelf is emptied.
+Each overlay found on a shelf gets a goods model: shop stock (cans, bottles, jars, packets) or storeroom stock (taped boxes, paint tins).
+Storeroom stock is used when the room or overlay name has a word from `ViewpointModelFix.STORAGE_WORDS`.
+There are three arrangements of each, so a row of shelves doesn't repeat.
 Sinks set into kitchen counters are left alone.
 Anything it finds is remembered in `Zomboid/Lua/ViewpointModelFix_learned.txt`, so on the next start those objects get their models immediately.
 
@@ -31,12 +38,12 @@ Changed models, textures and `bind.` lines in `pack.txt` show up straight away.
 A new kind of model, or a change to the Lua file, still needs a restart.
 
 **F7** lists the objects around you, and whether each one has a model, in `Zomboid/Lua/ViewpointModelFix_binds.txt`.
+It also lists overlays (such as a shelf's goods) and which end of a bed each tile is.
 To give a model to something the mod doesn't catch, copy its `bind.` line into `pack.txt`.
 
 If a model comes out turned the wrong way, change `ViewpointModelFix.DEGREES` in `media/lua/client/ViewpointModelFix.lua`.
 Objects found earlier are bound again with the new turn as they load.
-The shelf and box models are only used if you bind them by hand.
-They're empty, and the original shelf art has the goods painted on.
+The cardboard box model is only used if you bind it by hand.
 
 If a urinal still looks flat, another model pack, such as Viewpoint Tile Fix, may be binding the same object.
 Try turning that pack off in Viewpoint's settings (DELETE) under World → Model packs.

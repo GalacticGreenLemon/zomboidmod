@@ -13,9 +13,19 @@ model.bed=bed.obj
 model.bed_blue=bed_blue.obj
 model.bed_red=bed_red.obj
 model.bed_green=bed_green.obj
+model.bed_head=bed_head.obj
+model.bed_blue_head=bed_blue_head.obj
+model.bed_red_head=bed_red_head.obj
+model.bed_green_head=bed_green_head.obj
 model.mirror=mirror.obj
 model.light_switch=light_switch.obj
 model.hand_dryer=hand_dryer.obj
+model.goods_store_1=goods_store_1.obj
+model.goods_store_2=goods_store_2.obj
+model.goods_store_3=goods_store_3.obj
+model.goods_storage_1=goods_storage_1.obj
+model.goods_storage_2=goods_storage_2.obj
+model.goods_storage_3=goods_storage_3.obj
 
 # bind.<sprite name>=<model>,<degrees>,<x>,<y>,<z>,<scale>
 #   degrees: turns the model; each model faces south with its back to a north wall at 0

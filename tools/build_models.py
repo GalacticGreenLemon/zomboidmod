@@ -257,10 +257,11 @@ def goods_storage(m, rng, y, room):
         x += w + rng.uniform(0.005, 0.03)
 
 
-def bed(blanket):
+def bed(blanket, head=False):
     def make():
-        # one tile of a bed: beds are two sprites long, so each half is a full tile of bed
-        # running along its facing (Z here), and the halves meet end to end
+        # one tile of a bed: beds are two sprites long, running along their facing (Z here),
+        # the head at the back (-Z). The head tile has the headboard, pillow and the blanket
+        # turned down over the sheet; the foot tile the rest of the blanket and a footboard.
         m = Mesh()
         x0, x1 = -0.46, 0.46
         for x in (x0, x1 - 0.06):
@@ -268,7 +269,16 @@ def bed(blanket):
                 m.box(x, x + 0.06, 0.0, 0.14, z, z + 0.06, "wood", prm={"grain": 1})  # legs
         m.box(x0, x1, 0.14, 0.26, -0.5, 0.5, "wood", prm={"grain": 2})                # frame
         m.box(x0 + 0.02, x1 - 0.02, 0.26, 0.40, -0.5, 0.5, "mattress")
-        m.box(x0 - 0.01, x1 + 0.01, 0.34, 0.46, -0.5, 0.5, blanket)
+        if head:
+            m.box(x0, x1, 0.0, 0.80, -0.5, -0.46, "wood", prm={"grain": 0})           # headboard
+            m.box(x0 + 0.02, x1 - 0.02, 0.40, 0.415, -0.46, -0.12, "sheet")
+            m.box(x0 - 0.01, x1 + 0.01, 0.34, 0.46, -0.14, 0.5, blanket)
+            m.box(x0 - 0.01, x1 + 0.01, 0.46, 0.475, -0.17, -0.07, "sheet")         # turned down
+            m.lathe(0.0, -0.32, [(0.415, 0.28, 0.09), (0.46, 0.31, 0.11), (0.50, 0.29, 0.10),
+                                 (0.52, 0.24, 0.07)], "pillow", segments=12, top="pillow")
+        else:
+            m.box(x0 - 0.01, x1 + 0.01, 0.34, 0.46, -0.5, 0.5, blanket)
+            m.box(x0, x1, 0.0, 0.36, 0.46, 0.5, "wood", prm={"grain": 0})             # footboard
         return m
     return make
 
@@ -308,6 +318,10 @@ MODELS = {
     "bed_blue": bed("blanket_blue"),
     "bed_red": bed("blanket_red"),
     "bed_green": bed("blanket_green"),
+    "bed_head": bed("blanket", head=True),
+    "bed_blue_head": bed("blanket_blue", head=True),
+    "bed_red_head": bed("blanket_red", head=True),
+    "bed_green_head": bed("blanket_green", head=True),
     "mirror": mirror,
     "light_switch": light_switch,
     "hand_dryer": hand_dryer,
