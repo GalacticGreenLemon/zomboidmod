@@ -9,6 +9,13 @@ model.toilet=toilet.obj
 model.sink=sink.obj
 model.shelf_metal=shelf_metal.obj
 model.box_small=box_small.obj
+model.bed=bed.obj
+model.bed_blue=bed_blue.obj
+model.bed_red=bed_red.obj
+model.bed_green=bed_green.obj
+model.mirror=mirror.obj
+model.light_switch=light_switch.obj
+model.hand_dryer=hand_dryer.obj
 
 # bind.<sprite name>=<model>,<degrees>,<x>,<y>,<z>,<scale>
 #   degrees: turns the model; each model faces south with its back to a north wall at 0

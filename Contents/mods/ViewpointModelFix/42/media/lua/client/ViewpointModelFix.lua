@@ -1,4 +1,5 @@
--- Gives Viewpoint real models for the sprites it draws badly (urinals, toilets, sinks).
+-- Gives Viewpoint real models for the sprites it draws badly (urinals, toilets, sinks, beds,
+-- mirrors, light switches, hand dryers).
 --
 -- Nothing needs setting up: every square the game loads is checked for sprites whose name
 -- (CustomName / GroupName) matches a model, and those get bound through extra pack files this
@@ -15,17 +16,30 @@ local PACK_DIR = "viewpoint/ViewpointModelFix/"
 local LEARNED_FILE = "ViewpointModelFix_learned.txt"
 local DUMP_FILE = "ViewpointModelFix_binds.txt"
 local DUMP_RADIUS = 3
-local MODELS = { "urinal", "toilet", "sink", "shelf_metal", "box_small" }
+local MODELS = { "urinal", "toilet", "sink", "shelf_metal", "box_small",
+    "bed", "bed_blue", "bed_red", "bed_green", "mirror", "light_switch", "hand_dryer" }
 
 -- Turn per sprite facing, in degrees. The models face south with their back to a north wall.
 -- If they all come out backwards or sideways in game, this table is the one place to fix it;
 -- sprites learned with the old turns are bound again as they load.
 ViewpointModelFix.DEGREES = { S = 0, W = 90, N = 180, E = 270 }
 
--- Which model a sprite gets, matched against its CustomName / GroupName (lower case).
+-- Which model a sprite gets, matched against its CustomName / GroupName (lower case): the
+-- first entry whose `custom` is the whole CustomName (when given) and whose `find` is in
+-- "<custom> <group>" (when given) wins.
 -- auto = false: only listed by F7, never bound on its own (the shelf model is empty, the
 -- sprite's art has the shelf's goods painted on, so swapping it is a matter of taste).
 ViewpointModelFix.MATCHES = {
+    -- beds come in two halves, one sprite per tile; each half gets a full-tile length of bed
+    { custom = "bed", find = "blue", model = "bed_blue", auto = true },
+    { custom = "bed", find = "red", model = "bed_red", auto = true },
+    { custom = "bed", find = "pink", model = "bed_red", auto = true },
+    { custom = "bed", find = "green", model = "bed_green", auto = true },
+    { custom = "bed", model = "bed", auto = true },
+    -- wall = true: turned by the wall the sprite hangs on, before its Facing
+    { find = "mirror", model = "mirror", auto = true, wall = true },
+    { custom = "switch", model = "light_switch", auto = true, wall = true },
+    { find = "blower", model = "hand_dryer", auto = true, wall = true },
     { find = "urinal", model = "urinal", auto = true },
     { find = "toilet hanging", model = "urinal", auto = true },   -- the game's urinals; "Sink / Hanging" is a sink
     { find = "toilet", model = "toilet", auto = true },
@@ -94,11 +108,43 @@ local function prop(props, key)
     return tostring(value)
 end
 
+-- flags are asked for by the game's own IsoFlagType where Lua can see it; a flag the build
+-- doesn't take is never asked for again
+local badFlags = {}
+
 local function has(props, key)
-    if not props then return false end
+    if not props or badFlags[key] then return false end
     local name = method(props, { "has", "Is" })
     if not name then return false end
-    return props[name](props, key) == true
+    local flag = key
+    if IsoFlagType and IsoFlagType[key] ~= nil then flag = IsoFlagType[key] end
+    local ok, value = pcall(function() return props[name](props, flag) end)
+    if not ok then
+        badFlags[key] = true
+        return false
+    end
+    return value == true
+end
+
+-- wall decorations often carry no Facing, only the wall they hang on
+local ATTACHED = { attachedN = "S", attachedW = "E", attachedS = "N", attachedE = "W" }
+
+local function attachedFacing(props)
+    for flag, faces in pairs(ATTACHED) do
+        if has(props, flag) then return faces end
+    end
+    return nil
+end
+
+local function facingOf(props, wall)
+    if wall then return attachedFacing(props) or prop(props, "Facing") end
+    return prop(props, "Facing") or attachedFacing(props)
+end
+
+local function matches(m, custom, text)
+    if m.custom and string.lower(custom or "") ~= m.custom then return false end
+    if m.find and not string.find(text, m.find, 1, true) then return false end
+    return true
 end
 
 local function describe(sprite)
@@ -107,7 +153,7 @@ local function describe(sprite)
     local text = string.lower((custom or "") .. " " .. (group or ""))
     local match
     for _, m in ipairs(ViewpointModelFix.MATCHES) do
-        if string.find(text, m.find, 1, true) then
+        if matches(m, custom, text) then
             match = m
             break
         end
@@ -120,7 +166,7 @@ local function describe(sprite)
     return {
         custom = custom,
         group = group,
-        facing = prop(props, "Facing"),
+        facing = facingOf(props, match and match.wall),
         match = match,
     }
 end

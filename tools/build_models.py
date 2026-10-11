@@ -30,7 +30,8 @@ ATLAS = "atlas.png"
 
 CELL = 64
 SWATCHES = ["porcelain", "basin", "chrome", "cardboard",
-            "tape", "darkmetal", "seat", "drain", "inner"]
+            "tape", "darkmetal", "seat", "drain", "inner",
+            "wood", "blanket", "blanket_blue", "blanket_red", "blanket_green", "glass", "plastic"]
 
 
 def swatch_uv(name):
@@ -101,6 +102,37 @@ def build_atlas(path):
     put("darkmetal", noisy((58, 61, 66), 6, rng).filter(ImageFilter.SMOOTH))
     put("drain", noisy((60, 62, 66), 4, rng))
     put("inner", noisy((196, 202, 208), 4, rng).filter(ImageFilter.SMOOTH))  # inside a bowl, in shade
+
+    wood = Image.new("RGB", (CELL, CELL))
+    wp = wood.load()
+    for y in range(CELL):
+        for x in range(CELL):
+            grain = math.sin(y * 0.55 + math.sin(x * 0.08) * 2.5) * 10
+            v = rng.uniform(-4, 4)
+            wp[x, y] = tuple(int(max(0, min(255, c + grain + v))) for c in (118, 80, 50))
+    put("wood", wood.filter(ImageFilter.SMOOTH))
+
+    def blanket(base):
+        img = noisy(base, 5, rng)
+        d = ImageDraw.Draw(img)
+        dark = tuple(int(c * 0.82) for c in base)
+        for y in range(0, CELL, 8):  # quilted stitching
+            d.line([(0, y), (CELL, y)], fill=dark)
+        return img.filter(ImageFilter.SMOOTH)
+    put("blanket", blanket((176, 160, 132)))
+    put("blanket_blue", blanket((86, 108, 148)))
+    put("blanket_red", blanket((150, 64, 62)))
+    put("blanket_green", blanket((84, 112, 78)))
+
+    glass = Image.new("RGB", (CELL, CELL))
+    gp = glass.load()
+    for y in range(CELL):
+        for x in range(CELL):
+            t = (x + y) / (2 * CELL)
+            streak = 18 if abs((x - y) % 40 - 20) < 3 else 0  # a pale diagonal sheen
+            gp[x, y] = tuple(int(min(255, a + (b - a) * t + streak)) for a, b in zip((170, 186, 196), (120, 134, 146)))
+    put("glass", glass.filter(ImageFilter.SMOOTH))
+    put("plastic", noisy((226, 222, 210), 3, rng).filter(ImageFilter.SMOOTH))
 
     atlas.save(path)
 
@@ -308,12 +340,58 @@ def shelf_metal():
     return m
 
 
+def bed(blanket):
+    def make():
+        # one tile of a bed: beds are two sprites long, so each half is a full tile of bed
+        # running along its facing (Z here), and the halves meet end to end
+        m = Mesh()
+        x0, x1 = -0.46, 0.46
+        for x in (x0, x1 - 0.06):
+            for z in (-0.5, 0.44):
+                m.box(x, x + 0.06, 0.0, 0.14, z, z + 0.06, "wood")  # legs
+        m.box(x0, x1, 0.14, 0.26, -0.5, 0.5, "wood")                # frame
+        m.box(x0 + 0.02, x1 - 0.02, 0.26, 0.40, -0.5, 0.5, "seat")  # mattress
+        m.box(x0 - 0.01, x1 + 0.01, 0.34, 0.46, -0.5, 0.5, blanket)  # blanket over it
+        return m
+    return make
+
+
+def mirror():
+    m = Mesh()
+    m.box(-0.30, 0.30, 1.02, 1.82, WALL, WALL + 0.02, "chrome")             # frame
+    m.box(-0.28, 0.28, 1.04, 1.80, WALL + 0.02, WALL + 0.026, "glass")      # glass
+    return m
+
+
+def light_switch():
+    m = Mesh()
+    m.box(-0.04, 0.04, 1.06, 1.18, WALL, WALL + 0.012, "plastic")           # plate
+    m.box(-0.01, 0.01, 1.105, 1.135, WALL + 0.012, WALL + 0.03, "plastic")  # toggle
+    return m
+
+
+def hand_dryer():
+    m = Mesh()
+    m.box(-0.13, 0.13, 1.00, 1.26, WALL, WALL + 0.17, "plastic")
+    m.lathe(0.0, WALL + 0.11, [(0.94, 0.035, 0.035), (1.00, 0.04, 0.04)], "chrome",
+            segments=8, bottom="drain")                                       # nozzle
+    m.box(-0.08, 0.08, 1.20, 1.23, WALL + 0.17, WALL + 0.175, "chrome")     # badge
+    return m
+
+
 MODELS = {
     "urinal": urinal,
     "toilet": toilet,
     "sink": sink,
     "box_small": box_small,
     "shelf_metal": shelf_metal,
+    "bed": bed("blanket"),
+    "bed_blue": bed("blanket_blue"),
+    "bed_red": bed("blanket_red"),
+    "bed_green": bed("blanket_green"),
+    "mirror": mirror,
+    "light_switch": light_switch,
+    "hand_dryer": hand_dryer,
 }
 
 

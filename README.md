@@ -1,7 +1,7 @@
 # Viewpoint Model Fix
 
 An add-on for [Viewpoint](https://steamcommunity.com/sharedfiles/filedetails/?id=3809306528), the first-person mod for Project Zomboid Build 42.
-Viewpoint builds most furniture out of the flat isometric sprites, and that looks wrong on shapes like urinals, toilets, sinks and shelves.
+Viewpoint builds most furniture out of the flat isometric sprites, and that looks wrong on shapes like urinals, toilets, sinks, beds and wall fittings.
 This mod uses Viewpoint's own **model packs** to replace those sprites with real low-poly 3D models.
 It doesn't change Viewpoint itself.
 
@@ -19,7 +19,8 @@ It doesn't change Viewpoint itself.
 ## How the models get used
 
 You don't need to set anything up. As the map loads, the mod checks each object's name.
-Urinals, toilets and wall sinks get their model straight away.
+Urinals, toilets, wall sinks, beds, mirrors, light switches and hand dryers get their model straight away.
+Beds come in colours to match the blanket: plain, blue, red or pink, and green.
 Sinks set into kitchen counters are left alone.
 Anything it finds is remembered in `Zomboid/Lua/ViewpointModelFix_learned.txt`, so on the next start those objects get their models immediately.
 
