@@ -3,11 +3,14 @@
 
 Run from the repo root:  python3 tools/build_models.py
 
-Conventions (what Viewpoint's model packs expect, as far as we can tell):
-  * 1 unit = 1 tile wide. Y is up, 0 is the floor.
-  * The tile's centre is the origin, so a tile spans -0.5..0.5 on X and Z.
-  * Models here are authored with their back against the -Z edge (a "north" wall)
-    and their front facing +Z. The manifest's `degrees` turns them for the other walls.
+Viewpoint's model packs read OBJ files in the game's own world axes: X east, Y south, Z up.
+1 unit is one tile wide, a storey is 2.449 units tall (sqrt 6), and the origin is the
+centre of the tile on its floor. `degrees` in a bind turns a model from east towards south.
+
+The shapes below are authored Y-up for convenience: X east, Y up, Z south (the front),
+back against the -Z edge, which is a north wall. Mesh.write converts to Viewpoint's axes.
+Every face is written both ways round: Viewpoint mirrors the file on loading and draws
+faces one-sided, so this keeps the models whole whichever side it takes for the front.
 """
 
 import math
@@ -193,18 +196,24 @@ class Mesh:
                 self.quad(b, a, d, c, swatch)
 
     def write(self, path, mtl):
+        # authored (x east, y up, z south) -> Viewpoint (x east, y south, z up)
         with open(path, "w") as f:
             f.write("# ViewpointModelFix, built by tools/build_models.py\n")
             f.write(f"mtllib {mtl}\n")
-            for p in self.v:
-                f.write("v %.4f %.4f %.4f\n" % p)
+            for x, y, z in self.v:
+                f.write("v %.4f %.4f %.4f\n" % (x, z, y))
             for t in self.vt:
                 f.write("vt %.4f %.4f\n" % t)
-            for n in self.vn:
-                f.write("vn %.4f %.4f %.4f\n" % n)
+            for x, y, z in self.vn:
+                f.write("vn %.4f %.4f %.4f\n" % (x, z, y))
+            for x, y, z in self.vn:
+                f.write("vn %.4f %.4f %.4f\n" % (-x, -z, -y))
             f.write("usemtl atlas\n")
+            flip = len(self.vn)
             for face in self.f:
-                f.write("f " + " ".join("%d/%d/%d" % c for c in face) + "\n")
+                # swapping y and z mirrors, so the authored order now winds the other way
+                f.write("f " + " ".join("%d/%d/%d" % c for c in reversed(face)) + "\n")
+                f.write("f " + " ".join("%d/%d/%d" % (v, t, n + flip) for v, t, n in face) + "\n")
 
 
 WALL = -0.5  # the back edge of the tile
@@ -312,7 +321,7 @@ def main():
             mesh = make()
             mesh.write(os.path.join(out, name + ".obj"), "atlas.mtl")
             if out == OUT:
-                print("%-12s %4d triangles" % (name, len(mesh.f)))
+                print("%-12s %4d triangles (each written both ways round)" % (name, len(mesh.f)))
 
 
 if __name__ == "__main__":

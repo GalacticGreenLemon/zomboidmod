@@ -26,7 +26,8 @@ def load(path):
         if not p:
             continue
         if p[0] == "v":
-            v.append([float(x) for x in p[1:4]])
+            x, y, z = (float(c) for c in p[1:4])
+            v.append([x, z, y])  # Viewpoint's z-up axes back to y-up for viewing
         elif p[0] == "vt":
             vt.append([float(x) for x in p[1:3]])
         elif p[0] == "f":
@@ -55,10 +56,10 @@ def render(path, tex, yaw=-35, pitch=22):
             ids = [c[0] for c in tri]
             a, b, c = sx[ids], sy[ids], cam[ids, 2]
             area = (a[1] - a[0]) * (b[2] - b[0]) - (a[2] - a[0]) * (b[1] - b[0])
-            if area >= 0:  # clockwise on screen (y down) = back face
+            if area <= 0:  # the y/z swap above mirrors, so front faces now wind the other way
                 continue
             wn = np.cross(v[ids[1]] - v[ids[0]], v[ids[2]] - v[ids[0]])
-            wn /= np.linalg.norm(wn) or 1
+            wn /= -(np.linalg.norm(wn) or 1)  # mirrored winding: the cross product points in
             shade = 0.45 + 0.55 * max(0.0, float(wn @ light))
             uv = vt[[c_[1] for c_ in tri]]
             x0, x1 = int(max(0, a.min())), int(min(W - 1, a.max()))
