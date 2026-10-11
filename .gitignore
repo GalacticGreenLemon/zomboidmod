@@ -2,3 +2,5 @@ previews/
 __pycache__/
 # written by the mod at run time
 Contents/mods/ViewpointModelFix/*/media/viewpoint/ViewpointModelFix/auto_*.txt
+Contents/mods/ViewpointModelFix/*/media/viewpoint/ViewpointModelFix/reload_*.txt
+Contents/mods/ViewpointModelFix/*/media/viewpoint/ViewpointModelFix/*.r*.obj

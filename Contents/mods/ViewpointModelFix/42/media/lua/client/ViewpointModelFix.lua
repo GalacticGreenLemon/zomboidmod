@@ -6,7 +6,8 @@
 -- mod writes into its own folder and registers with Viewpoint as it goes. What it found is
 -- remembered in Zomboid/Lua/ViewpointModelFix_learned.txt, so the next start binds it at once.
 --
--- F7 still lists the sprites round the player into Zomboid/Lua/ViewpointModelFix_binds.txt.
+-- F7 lists the sprites round the player into Zomboid/Lua/ViewpointModelFix_binds.txt;
+-- Shift+F7 reloads the models from disk without restarting the game.
 
 ViewpointModelFix = ViewpointModelFix or {}
 
@@ -223,12 +224,13 @@ end
 -- both 42/ and common/, so a pack file written to either finds them beside it.
 local function findWriteAt()
     if writeAt ~= nil then return writeAt end
+    -- dir: where getModFileWriter puts pack files; read: where getModFileReader finds the models
     if modFileExists("42/media/" .. PACK_DIR .. "pack.txt") then
-        writeAt = { dir = "42/media/" .. PACK_DIR, models = "" }
+        writeAt = { dir = "42/media/" .. PACK_DIR, read = "42/media/" .. PACK_DIR }
     elseif modFileExists("media/" .. PACK_DIR .. "pack.txt") then
-        writeAt = { dir = "media/" .. PACK_DIR, models = "" }
+        writeAt = { dir = "media/" .. PACK_DIR, read = "media/" .. PACK_DIR }
     elseif modFileExists("mod.info") then
-        writeAt = { dir = "media/" .. PACK_DIR, models = "" }
+        writeAt = { dir = "media/" .. PACK_DIR, read = "media/" .. PACK_DIR }
     else
         writeAt = false
         log("could not find the mod's own folder to write its binds into")
@@ -253,7 +255,7 @@ local function flush()
     writer:writeln(string.format("id=ViewpointModelFix-auto-%d", batch))
     writer:writeln(string.format("name=Model fixes (found %d)", batch))
     for _, model in ipairs(MODELS) do
-        writer:writeln(string.format("model.%s=%s%s.obj", model, at.models, model))
+        writer:writeln(string.format("model.%s=%s.obj", model, model))
     end
     for _, name in ipairs(pending) do
         writer:writeln("bind." .. name .. "=" .. learned[name])
@@ -316,6 +318,93 @@ local function onGameStart()
     flush()
 end
 
+-- Shift+F7: reload the models without restarting -------------------------------------------
+--
+-- Viewpoint keeps a model it has loaded for as long as the game runs, by file name, but
+-- rebuilds every chunk when a pack is registered. So a reload copies each model to a new
+-- name, writes a pack binding everything to the copies, and registers it. Changed OBJ files,
+-- atlas.png and binds added to pack.txt all show at once; a new kind of model, or a change to
+-- this Lua file, still needs a restart.
+
+local reloads = 0
+
+local function readModFile(path)
+    local ok, reader = pcall(getModFileReader, MOD_ID, path, false)
+    if not ok or not reader then return nil end
+    local lines = {}
+    local line = reader:readLine()
+    while line do
+        table.insert(lines, line)
+        line = reader:readLine()
+    end
+    reader:close()
+    return lines
+end
+
+local function writeModFile(path, lines)
+    local writer = getModFileWriter(MOD_ID, path, true, false)
+    if not writer then return false end
+    for _, line in ipairs(lines) do writer:writeln(line) end
+    writer:close()
+    return true
+end
+
+function ViewpointModelFix.reload()
+    local packs = viewpointPacks()
+    local at = findWriteAt()
+    if not packs or not at then
+        log("reload: no folder to write into")
+        return
+    end
+    reloads = reloads + 1
+    local tag = string.format("r%d", reloads)
+
+    local manifest = {
+        "# written by ViewpointModelFix.lua (Shift+F7); rewritten every reload",
+        "id=ViewpointModelFix-" .. tag,
+        "name=Model fixes (reload " .. reloads .. ")",
+    }
+    local copied = 0
+    for _, model in ipairs(MODELS) do
+        local lines = readModFile(at.read .. model .. ".obj")
+        if lines and writeModFile(at.dir .. model .. "." .. tag .. ".obj", lines) then
+            table.insert(manifest, string.format("model.%s=%s.%s.obj", model, model, tag))
+            copied = copied + 1
+        else
+            log("reload: could not copy " .. model .. ".obj")
+        end
+    end
+
+    local binds = 0
+    for name, value in pairs(learned) do
+        table.insert(manifest, "bind." .. name .. "=" .. value)
+        binds = binds + 1
+    end
+    -- binds added to pack.txt by hand
+    for _, line in ipairs(readModFile(at.read .. "pack.txt") or {}) do
+        if string.match(line, "^bind%.") then
+            table.insert(manifest, line)
+            binds = binds + 1
+        end
+    end
+
+    local file = "reload_" .. reloads .. ".txt"
+    if not writeModFile(at.dir .. file, manifest) then
+        log("reload: could not write " .. file)
+        return
+    end
+    local ok, result = pcall(packs.register, MOD_ID, "media/" .. PACK_DIR .. file)
+    local text
+    if ok and result then
+        text = string.format("Models reloaded: %d models, %d objects", copied, binds)
+    else
+        text = "Model reload failed, see console.txt"
+    end
+    log(text .. " (" .. file .. ")")
+    local player = getPlayer()
+    if player then player:Say(text) end
+end
+
 -- F7: list what is round the player ---------------------------------------------------------
 
 function ViewpointModelFix.dump()
@@ -365,7 +454,12 @@ function ViewpointModelFix.dump()
 end
 
 local function onKey(key)
-    if key == Keyboard.KEY_F7 then ViewpointModelFix.dump() end
+    if key ~= Keyboard.KEY_F7 then return end
+    if isKeyDown(Keyboard.KEY_LSHIFT) or isKeyDown(Keyboard.KEY_RSHIFT) then
+        ViewpointModelFix.reload()
+    else
+        ViewpointModelFix.dump()
+    end
 end
 
 readLearned()

@@ -24,6 +24,11 @@ Beds come in colours to match the blanket: plain, blue, red or pink, and green.
 Sinks set into kitchen counters are left alone.
 Anything it finds is remembered in `Zomboid/Lua/ViewpointModelFix_learned.txt`, so on the next start those objects get their models immediately.
 
+**Shift+F7** reloads the models from disk without restarting the game.
+Run `install.bat` with the game still open, then press Shift+F7 in game.
+Changed models, textures and `bind.` lines in `pack.txt` show up straight away.
+A new kind of model, or a change to the Lua file, still needs a restart.
+
 **F7** lists the objects around you, and whether each one has a model, in `Zomboid/Lua/ViewpointModelFix_binds.txt`.
 To give a model to something the mod doesn't catch, copy its `bind.` line into `pack.txt`.
 
