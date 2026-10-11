@@ -30,7 +30,7 @@ ATLAS = "atlas.png"
 
 CELL = 64
 SWATCHES = ["porcelain", "basin", "chrome", "cardboard",
-            "tape", "darkmetal", "seat", "drain"]
+            "tape", "darkmetal", "seat", "drain", "inner"]
 
 
 def swatch_uv(name):
@@ -100,6 +100,7 @@ def build_atlas(path):
     put("tape", noisy((214, 190, 140), 6, rng).filter(ImageFilter.SMOOTH))
     put("darkmetal", noisy((58, 61, 66), 6, rng).filter(ImageFilter.SMOOTH))
     put("drain", noisy((60, 62, 66), 4, rng))
+    put("inner", noisy((196, 202, 208), 4, rng).filter(ImageFilter.SMOOTH))  # inside a bowl, in shade
 
     atlas.save(path)
 
@@ -221,22 +222,27 @@ WALL = -0.5  # the back edge of the tile
 
 def urinal():
     m = Mesh()
+    back = WALL + 0.03
     # wall plate the bowl hangs from
-    m.box(-0.19, 0.19, 0.48, 1.08, WALL, WALL + 0.03, "porcelain")
-    # the bowl: half an ellipse sweeping out from the wall, narrowing to the bottom
-    m.lathe(0.0, WALL + 0.03, [
-        (0.50, 0.13, 0.16),
-        (0.58, 0.17, 0.26),
-        (0.90, 0.19, 0.30),
-        (1.05, 0.19, 0.27),
-    ], "porcelain", segments=12, a0=0, a1=180, top="basin", bottom="porcelain", close_back=True)
-    # drip lip at the front
-    m.box(-0.10, 0.10, 0.50, 0.56, WALL + 0.20, WALL + 0.30, "porcelain")
+    m.box(-0.19, 0.19, 0.48, 1.10, WALL, back, "porcelain")
+    # trough at the bottom: half an ellipse out from the wall, its top the bowl's floor
+    m.lathe(0.0, back, [(0.50, 0.13, 0.17), (0.58, 0.18, 0.27), (0.64, 0.19, 0.29)],
+            "porcelain", segments=12, a0=0, a1=180, top="basin", bottom="porcelain", close_back=True)
+    # hood at the top
+    m.lathe(0.0, back, [(0.98, 0.19, 0.29), (1.08, 0.18, 0.25)],
+            "porcelain", segments=12, a0=0, a1=180, top="porcelain", bottom="inner", close_back=True)
+    # the two side walls, leaving the front open between them
+    for a0, a1 in ((0, 38), (142, 180)):
+        m.lathe(0.0, back, [(0.64, 0.19, 0.29), (0.98, 0.19, 0.29)],
+                "porcelain", segments=4, a0=a0, a1=a1)
+    # the hollow's back: a half cylinder curving into the wall, seen from inside
+    m.lathe(0.0, back + 0.15, [(0.64, 0.16, 0.15), (0.98, 0.16, 0.15)],
+            "inner", segments=10, a0=180, a1=360)
     # flush valve: pipe up the wall and a lever
-    m.lathe(0.0, WALL + 0.07, [(1.05, 0.022, 0.022), (1.32, 0.022, 0.022)], "chrome",
+    m.lathe(0.0, WALL + 0.07, [(1.08, 0.022, 0.022), (1.34, 0.022, 0.022)], "chrome",
             segments=8, top="chrome")
-    m.box(-0.07, 0.07, 1.28, 1.34, WALL + 0.04, WALL + 0.11, "chrome")
-    m.box(0.07, 0.17, 1.30, 1.32, WALL + 0.08, WALL + 0.10, "chrome")
+    m.box(-0.07, 0.07, 1.30, 1.36, WALL + 0.04, WALL + 0.11, "chrome")
+    m.box(0.07, 0.17, 1.32, 1.34, WALL + 0.08, WALL + 0.10, "chrome")
     return m
 
 
