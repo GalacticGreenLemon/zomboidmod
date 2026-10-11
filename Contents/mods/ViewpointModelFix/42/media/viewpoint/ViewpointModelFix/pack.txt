@@ -15,7 +15,8 @@ model.box_small=box_small.obj
 #   x,y,z:   nudges it, in tiles (y is up)
 #   scale:   1 = as built (1 unit = 1 tile)
 #
-# Get the lines for your map: stand next to the objects in game, press F7, and copy what
-# lands in Zomboid/Lua/ViewpointModelFix_binds.txt below. The game must be restarted to
+# Urinals, toilets and wall sinks are found and bound on their own as the map loads (see
+# ViewpointModelFix.lua); binds added here by hand are for anything else. F7 in game lists the
+# sprites round the player into Zomboid/Lua/ViewpointModelFix_binds.txt. Restart the game to
 # pick up changes to this file.
 

@@ -14,23 +14,23 @@ It doesn't change Viewpoint itself.
 3. In Viewpoint's settings window (DELETE), check that **World → Model packs** has this pack on.
    Also check that **Levels of detail → Model packs' models within (chunks)** isn't 0.
 
-## Hooking models up to sprites
+## How the models get used
 
-Each model needs a `bind.` line in `42/media/viewpoint/ViewpointModelFix/pack.txt` naming the game sprite it replaces.
-Every direction an object faces is a separate sprite.
-This mod comes with a helper that writes those lines for you:
+You don't need to set anything up. As the map loads, the mod checks each object's name.
+Urinals, toilets and wall sinks get their model straight away.
+Sinks set into kitchen counters are left alone.
+Anything it finds is remembered in `Zomboid/Lua/ViewpointModelFix_learned.txt`, so on the next start those objects get their models immediately.
 
-1. Stand in a bathroom or storage room and press **F7**.
-2. Open `Zomboid/Lua/ViewpointModelFix_binds.txt`. You'll find something like this:
-   ```
-   bind.fixtures_bathroom_01_0=toilet,0,0,0,0,1   # Toilet / Fancy, facing S
-   # no model yet: walls_interior_bathroom_01_12   (? / ?, facing ?)
-   ```
-3. Paste the `bind.` lines at the end of `pack.txt` and restart the game.
+**F7** lists the objects around you, and whether each one has a model, in `Zomboid/Lua/ViewpointModelFix_binds.txt`.
+To give a model to something the mod doesn't catch, copy its `bind.` line into `pack.txt`.
 
-If a model comes out turned the wrong way, change its degrees (0, 90, 180 or 270).
-If every model is wrong in the same way, change `ViewpointModelFix.DEGREES` in `media/lua/client/ViewpointModelFix.lua` instead.
-If one is in the wrong spot, nudge its x/y/z, which are measured in tiles.
+If a model comes out turned the wrong way, change `ViewpointModelFix.DEGREES` in `media/lua/client/ViewpointModelFix.lua`.
+Then delete `ViewpointModelFix_learned.txt` so the old turns are forgotten.
+The shelf and box models are only used if you bind them by hand.
+They're empty, and the original shelf art has the goods painted on.
+
+If a urinal still looks flat, another model pack, such as Viewpoint Tile Fix, may be binding the same object.
+Try turning that pack off in Viewpoint's settings (DELETE) under World → Model packs.
 
 ## Bind format
 
