@@ -16,8 +16,11 @@ import random
 
 from PIL import Image, ImageDraw, ImageFilter
 
-OUT = os.path.join(os.path.dirname(__file__), "..",
-                   "Contents", "mods", "ViewpointModelFix", "42", "media", "viewpoint", "ViewpointModelFix")
+MOD = os.path.join(os.path.dirname(__file__), "..", "Contents", "mods", "ViewpointModelFix")
+OUT = os.path.join(MOD, "42", "media", "viewpoint", "ViewpointModelFix")
+# The mod writes extra pack files at run time, into 42/ or common/ depending on the game build;
+# their models are named relative to them, so the models ship in both.
+COPIES = [OUT, os.path.join(MOD, "common", "media", "viewpoint", "ViewpointModelFix")]
 ATLAS = "atlas.png"
 
 # --- texture atlas: a 4x4 grid of 64px swatches ---------------------------------------------
@@ -300,14 +303,16 @@ MODELS = {
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
-    build_atlas(os.path.join(OUT, ATLAS))
-    with open(os.path.join(OUT, "atlas.mtl"), "w") as f:
-        f.write("newmtl atlas\nKd 1 1 1\nmap_Kd %s\n" % ATLAS)
-    for name, make in MODELS.items():
-        mesh = make()
-        mesh.write(os.path.join(OUT, name + ".obj"), "atlas.mtl")
-        print("%-12s %4d triangles" % (name, len(mesh.f)))
+    for out in COPIES:
+        os.makedirs(out, exist_ok=True)
+        build_atlas(os.path.join(out, ATLAS))
+        with open(os.path.join(out, "atlas.mtl"), "w") as f:
+            f.write("newmtl atlas\nKd 1 1 1\nmap_Kd %s\n" % ATLAS)
+        for name, make in MODELS.items():
+            mesh = make()
+            mesh.write(os.path.join(out, name + ".obj"), "atlas.mtl")
+            if out == OUT:
+                print("%-12s %4d triangles" % (name, len(mesh.f)))
 
 
 if __name__ == "__main__":

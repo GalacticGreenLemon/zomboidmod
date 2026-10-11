@@ -9,8 +9,10 @@ It doesn't change Viewpoint itself.
 
 ## Install
 
-1. Copy `Contents/mods/ViewpointModelFix` to `C:\Users\<you>\Zomboid\mods\ViewpointModelFix`.
+1. Close the game and run `install.bat`. It downloads this mod into `C:\Users\<you>\Zomboid\mods\ViewpointModelFix`.
+   Run it again to update. You can also copy `Contents/mods/ViewpointModelFix` there by hand.
 2. Enable **Viewpoint Model Fix** in the mod list, after Viewpoint.
+   For a save that already exists, also enable it in that save's own mod list (Load → the save → Mods).
 3. In Viewpoint's settings window (DELETE), check that **World → Model packs** has this pack on.
    Also check that **Levels of detail → Model packs' models within (chunks)** isn't 0.
 
@@ -25,7 +27,7 @@ Anything it finds is remembered in `Zomboid/Lua/ViewpointModelFix_learned.txt`, 
 To give a model to something the mod doesn't catch, copy its `bind.` line into `pack.txt`.
 
 If a model comes out turned the wrong way, change `ViewpointModelFix.DEGREES` in `media/lua/client/ViewpointModelFix.lua`.
-Then delete `ViewpointModelFix_learned.txt` so the old turns are forgotten.
+Objects found earlier are bound again with the new turn as they load.
 The shelf and box models are only used if you bind them by hand.
 They're empty, and the original shelf art has the goods painted on.
 

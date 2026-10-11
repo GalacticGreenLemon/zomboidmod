@@ -18,8 +18,8 @@ local DUMP_RADIUS = 3
 local MODELS = { "urinal", "toilet", "sink", "shelf_metal", "box_small" }
 
 -- Turn per sprite facing, in degrees. The models face south with their back to a north wall.
--- If they all come out backwards or sideways in game, this table is the one place to fix it
--- (then delete Zomboid/Lua/ViewpointModelFix_learned.txt so the old turns are forgotten).
+-- If they all come out backwards or sideways in game, this table is the one place to fix it;
+-- sprites learned with the old turns are bound again as they load.
 ViewpointModelFix.DEGREES = { S = 0, W = 90, N = 180, E = 270 }
 
 -- Which model a sprite gets, matched against its CustomName / GroupName (lower case).
@@ -27,6 +27,7 @@ ViewpointModelFix.DEGREES = { S = 0, W = 90, N = 180, E = 270 }
 -- sprite's art has the shelf's goods painted on, so swapping it is a matter of taste).
 ViewpointModelFix.MATCHES = {
     { find = "urinal", model = "urinal", auto = true },
+    { find = "hanging", model = "urinal", auto = true },   -- the game's urinals: "Toilet / Hanging"
     { find = "toilet", model = "toilet", auto = true },
     { find = "sink", model = "sink", auto = true, wallOnly = true },
     { find = "metal shel", model = "shelf_metal", auto = false },
@@ -65,19 +66,39 @@ ViewpointModelFix.register = register
 
 -- reading sprites ---------------------------------------------------------------------------
 
+-- Build 42 renamed some PropertyContainer methods; find the ones this build has once, so
+-- nothing is ever called that isn't there (a failed call logs a stack trace even under pcall)
+local methods = {}
+
+local function method(props, names)
+    local key = table.concat(names, "/")
+    if methods[key] == nil then
+        methods[key] = false
+        for _, name in ipairs(names) do
+            local ok, found = pcall(function() return props[name] end)
+            if ok and found ~= nil then
+                methods[key] = name
+                break
+            end
+        end
+    end
+    return methods[key]
+end
+
 local function prop(props, key)
     if not props then return nil end
-    for _, getter in ipairs({ "Val", "get" }) do
-        local ok, value = pcall(function() return props[getter](props, key) end)
-        if ok and value ~= nil and value ~= "" then return tostring(value) end
-    end
-    return nil
+    local name = method(props, { "get", "Val" })
+    if not name then return nil end
+    local value = props[name](props, key)
+    if value == nil or value == "" then return nil end
+    return tostring(value)
 end
 
 local function has(props, key)
     if not props then return false end
-    local ok, value = pcall(function() return props:Is(key) end)
-    return ok and value == true
+    local name = method(props, { "has", "Is" })
+    if not name then return false end
+    return props[name](props, key) == true
 end
 
 local function describe(sprite)
@@ -137,7 +158,7 @@ local function writeLearned()
     table.sort(names)
     local writer = getFileWriter(LEARNED_FILE, true, false)
     writer:writeln("# sprites ViewpointModelFix found and bound: <sprite>=<model>,<degrees>,<x>,<y>,<z>,<scale>")
-    writer:writeln("# delete this file to have them found again")
+    writer:writeln("# rebuilt as the map loads; deleting it is safe")
     for _, name in ipairs(names) do writer:writeln(name .. "=" .. learned[name]) end
     writer:close()
 end
@@ -152,7 +173,8 @@ local function modFileExists(path)
 end
 
 -- getModFileWriter's paths start from the mod's root, its version folder or its common folder
--- depending on the game's build; find which by looking for a file we know is there
+-- depending on the game's build (and need not match getModFileReader's). The models ship in
+-- both 42/ and common/, so a pack file written to either finds them beside it.
 local function findWriteAt()
     if writeAt ~= nil then return writeAt end
     if modFileExists("42/media/" .. PACK_DIR .. "pack.txt") then
@@ -160,7 +182,7 @@ local function findWriteAt()
     elseif modFileExists("media/" .. PACK_DIR .. "pack.txt") then
         writeAt = { dir = "media/" .. PACK_DIR, models = "" }
     elseif modFileExists("mod.info") then
-        writeAt = { dir = "media/" .. PACK_DIR, models = "../../../../42/media/" .. PACK_DIR }
+        writeAt = { dir = "media/" .. PACK_DIR, models = "" }
     else
         writeAt = false
         log("could not find the mod's own folder to write its binds into")
@@ -216,18 +238,17 @@ local function queue(name)
     table.insert(pending, name)
 end
 
-local function learn(name, value)
-    learned[name] = value
-    queue(name)
-end
-
 local function check(sprite)
     local name = sprite and sprite:getName()
     if not name or checked[name] then return end
     checked[name] = true
-    if learned[name] then return end
     local info = describe(sprite)
-    if info.match and info.match.auto then learn(name, bindValue(info)) end
+    if not (info.match and info.match.auto) then return end
+    local value = bindValue(info)
+    if learned[name] == value then return end
+    learned[name] = value
+    applied[name] = nil
+    queue(name)
 end
 
 local function onSquare(square)
